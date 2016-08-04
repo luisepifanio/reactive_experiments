@@ -2,9 +2,7 @@ version = "1.0"
 description = "Reactive Drawings - Example Project"
 
 apply plugin: 'java'
-
 apply plugin: 'groovy'
-apply plugin: 'idea'
 apply plugin: 'jacoco'
 
 
@@ -32,8 +30,10 @@ repositories {
 // In this section you declare the dependencies for your production and test code
 dependencies {
 
+    //Guava
+    compile 'com.google.guava:guava:19.0'
     //Useful bytecode enhancements
-    compile 'org.projectlombok:lombok:1.16.10'
+    compileOnly "org.projectlombok:lombok:1.16.10"
     // Reactive extensions
     compile 'io.reactivex:rxgroovy:1.0.3'
     //compile fileTree(dir: 'libs', include: '*.jar')
@@ -116,3 +116,23 @@ test {
         //        org.gradle.api.tasks.testing.logging.TestLogEvent.STANDARD_ERROR,
     }
 }
+
+task runScript(dependsOn: 'classes', type: JavaExec) {
+    main = 'Main'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+
+// Lombok annotation processor
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "io.franzbecker:gradle-lombok:1.7"
+    }
+}
+
+apply plugin: "io.franzbecker.gradle-lombok"

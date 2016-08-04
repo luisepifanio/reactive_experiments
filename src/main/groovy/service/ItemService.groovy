@@ -1,45 +1,63 @@
 package service
 
+import backtolife.AsyncUtils
 import dto.Item
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import groovy.time.TimeCategory
+import groovy.time.TimeDuration
+import groovyx.net.http.HttpResponseDecorator
 import groovyx.net.http.RESTClient
-import groovy.util.slurpersupport.GPathResult
-// import static groovyx.net.http.ContentType.XML
-import static groovyx.net.http.ContentType.JSON
+import rx.Observable
 
+import java.util.concurrent.CompletableFuture
+import java.util.function.Supplier
+
+import static groovyx.net.http.ContentType.JSON
+import static groovyx.net.http.ContentType.TEXT
+
+// import static groovyx.net.http.ContentType.XML
 class ItemService {
-    Item getById(Long id){
-        RESTClient solr = new RESTClient('http://localhost:8080/solr/update')
-        def response = solr.post(
-                contentType: JSON,
+    Item getById(String id) {
+        long start = System.currentTimeMillis()
+
+        RESTClient client = new RESTClient("https://api.mercadolibre.com/items/$id")
+        HttpResponseDecorator response = client.get(
+                contentType: JSON, //TEXT
                 requestContentType: JSON,
-                body: {
-                    add {
-                        doc {
-                            field(name:"id", "SOLR1000")
-                            field(name:"name", "Solr, the Enterprise Search Server")
-                            field(name:"manu", "Apache Software Foundation")
-                            field(name:"cat", "software")
-                            field(name:"cat", "search")
-                            field(name:"features", "Advanced Full-Text Search Capabilities using Lucene")
-                            field(name:"features", "Optimized for High Volume Web Traffic")
-                            field(name:"features", "Standards Based Open Interfaces - XML and HTTP")
-                            field(name:"features", "Comprehensive HTML Administration Interfaces")
-                            field(name:"features", "Scalability - Efficient Replication to other Solr Search Servers")
-                            field(name:"features", "Flexible and Adaptable with XML configuration and Schema")
-                            field(name:"features", "Good unicode support: héllo (hello with an accent over the e)")
-                            field(name:"price", "0")
-                            field(name:"popularity", "10")
-                            field(name:"inStock", "true")
-                            field(name:"incubationdate_dt", "2006-01-17T00:00:00.000Z")
-                        }
-                    }
-                }
+                headers: [
+                        Accept: JSON.getAcceptHeader()
+                ]
         )
 
-        assert response.success
-        assert response.status == 200
-        assert response.data instanceof GPathResult
+        def data = response.data
 
-        println "Solr response status: ${response.status}"
+        Item item = Item.builder()
+                .id(data.id)
+                .title(data.title)
+                .currencyId(data.currency_id)
+                .thumbnail(data.thumbnail)
+                .sellerId(data.seller_id)
+                .price(data.price as BigDecimal)
+            .build()
+
+        long end = System.currentTimeMillis()
+        TimeDuration duration = TimeCategory.minus(new Date(end), new Date(start))
+        println duration
+
+        return item
+    }
+
+
+    Observable<Item> getByIdAsync(final String id) {
+        CompletableFuture<Item> future = CompletableFuture.supplyAsync(
+                new Supplier<Item>() {
+                    @Override
+                    Item get() {
+                        ItemService.this.getById(id)
+                    }
+                }
+        );
+        return AsyncUtils.toObservable(future);
     }
 }
