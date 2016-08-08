@@ -1,51 +1,101 @@
 package service
 
+import app.Application
 import backtolife.AsyncUtils
+import com.google.common.base.Preconditions
 import dto.Item
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
 import groovy.time.TimeCategory
 import groovy.time.TimeDuration
-import groovyx.net.http.HttpResponseDecorator
-import groovyx.net.http.RESTClient
 import rx.Observable
 
+import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
+import java.util.function.Function
 import java.util.function.Supplier
+import java.util.stream.Collectors
 
 import static groovyx.net.http.ContentType.JSON
-import static groovyx.net.http.ContentType.TEXT
 
-// import static groovyx.net.http.ContentType.XML
 class ItemService {
-    Item getById(String id) {
-        long start = System.currentTimeMillis()
 
-        RESTClient client = new RESTClient("https://api.mercadolibre.com/items/$id")
-        HttpResponseDecorator response = client.get(
-                contentType: JSON, //TEXT
-                requestContentType: JSON,
+    Item getById(String id) {
+
+        Application app = Application.INSTANCE
+
+        app.cache.get("/items/$id".toString(), {
+            long start = System.currentTimeMillis()
+            println "Started $id"
+
+            Future futureResponse = getFutureItemById()
+
+            // This is a BLOCKING approach ok?
+            // You should avoid this as a plague
+            def data = futureResponse.get(id)
+
+            Item item = Item.builder()
+                    .id(data.id)
+                    .title(data.title)
+                    .currencyId(data.currency_id)
+                    .thumbnail(data.thumbnail)
+                    .sellerId(data.seller_id)
+                    .price(data.price as BigDecimal)
+                    .build()
+
+            long end = System.currentTimeMillis()
+            TimeDuration duration = TimeCategory.minus(new Date(end), new Date(start))
+
+            println "getById $id took $duration"
+
+            return item
+        } as Callable<Item>) as Item
+    }
+
+    Collection<Item> getItemsByIdsBlocking(Collection<String> itemIds) {
+        Preconditions.checkNotNull(itemIds, 'Items');
+
+        itemIds.parallelStream()
+                .distinct()
+                .map(new Function<String, Item>() {
+                            @Override
+                            Item apply(String it) {
+                                getById(it)
+                            }
+                }).collect(Collectors.toList())
+    }
+
+    public static Future getFutureItemById(String id) {
+
+        Application app = Application.INSTANCE
+
+        Future futureResponse = app.client.get(
+                path: "/items/$id",
+                //body: [ status: msg, source: 'httpbuilder' ],
+                contentType: JSON,
+                //requestContentType: JSON,
+                //query :[:]
                 headers: [
                         Accept: JSON.getAcceptHeader()
                 ]
         )
+        futureResponse
+    }
 
-        def data = response.data
+    Observable<List<Item>> getItemsByIds(Collection<String> itemIds) {
 
-        Item item = Item.builder()
-                .id(data.id)
-                .title(data.title)
-                .currencyId(data.currency_id)
-                .thumbnail(data.thumbnail)
-                .sellerId(data.seller_id)
-                .price(data.price as BigDecimal)
-            .build()
+        Collection<CompletableFuture<Item>> futures = new HashSet<String>(itemIds).collect {
+            CompletableFuture.supplyAsync(
+                    new Supplier<Item>() {
+                        @Override
+                        Item get() {
+                            ItemService.this.getById(it)
+                        }
+                    }
+            )
+        }
 
-        long end = System.currentTimeMillis()
-        TimeDuration duration = TimeCategory.minus(new Date(end), new Date(start))
-        println duration
-
-        return item
+        return AsyncUtils.toObservable(futures)
+                .toList()
     }
 
 
@@ -57,7 +107,7 @@ class ItemService {
                         ItemService.this.getById(id)
                     }
                 }
-        );
+        )
         return AsyncUtils.toObservable(future);
     }
 }

@@ -20,6 +20,7 @@ repositories {
     mavenLocal()
     // Use Maven Central for resolving your dependencies.
     mavenCentral()
+
     // You can declare any Maven/Ivy/file repository here.
     // Spock snapshots are available from the Sonatype OSS snapshot repository
     // maven { url "http://oss.sonatype.org/content/repositories/snapshots/" }
@@ -37,8 +38,12 @@ dependencies {
     // Reactive extensions
     compile 'io.reactivex:rxgroovy:1.0.3'
     //compile fileTree(dir: 'libs', include: '*.jar')
+
     // The production code uses the SLF4J logging API at compile time
-    compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'org.slf4j:slf4j-api:1.7.20'
+    // using logback as underlying implementation
+    compile 'ch.qos.logback:logback-classic:1.1.7'
+
 
     compile 'org.codehaus.groovy:groovy-all:2.4.4'
 
@@ -49,17 +54,25 @@ dependencies {
     // TestNG is also supported by the Gradle Test task. Just change the
     // testCompile dependency to testCompile 'org.testng:testng:6.8.1' and add
     // 'test.useTestNG()' to your build script.
-    testCompile 'junit:junit:4.12'
 
     // mandatory dependencies for using Spock
-    compile "org.codehaus.groovy:groovy-all:2.4.1"
-    testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
+    testCompile(
+            'junit:junit:4.12',
+            // 'org.codehaus.groovy:groovy-all:2.4.4',
+            'org.spockframework:spock-core:1.0-groovy-2.4'
+    )
+
+    testCompile 'org.assertj:assertj-core:3.5.2'
+
+    // Debug rx observables
+    testCompile 'io.reactivex:rxjava-debug:1.0.3'
 
     // optional dependencies for using Spock
-    testCompile "org.hamcrest:hamcrest-core:1.3" // only necessary if Hamcrest matchers are used
-    testRuntime "cglib:cglib-nodep:3.1"          // allows mocking of classes (in addition to interfaces)
-    testRuntime "org.objenesis:objenesis:2.1"
-    // allows mocking of classes without default constructor (together with CGLIB)
+    testCompile(
+            'org.hamcrest:hamcrest-core:1.3', // only necessary if Hamcrest matchers are used
+            'cglib:cglib-nodep:3.1',          // allows mocking of classes (in addition to interfaces)
+            'org.objenesis:objenesis:2.1'     // allows mocking of classes without default constructor (together with CGLIB)
+    )
 
 }
 
@@ -117,11 +130,10 @@ test {
     }
 }
 
-task runScript(dependsOn: 'classes', type: JavaExec) {
+task runscript(dependsOn: 'classes', type: JavaExec) {
     main = 'Main'
     classpath = sourceSets.main.runtimeClasspath
 }
-
 
 // Lombok annotation processor
 buildscript {
@@ -134,5 +146,3 @@ buildscript {
         classpath "io.franzbecker:gradle-lombok:1.7"
     }
 }
-
-apply plugin: "io.franzbecker.gradle-lombok"

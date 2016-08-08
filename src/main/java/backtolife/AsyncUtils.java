@@ -1,7 +1,10 @@
 package backtolife;
 
 import rx.Observable;
+import rx.schedulers.Schedulers;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -9,7 +12,7 @@ public class AsyncUtils {
 
     // http://www.nurkiewicz.com/2014/11/converting-between-completablefuture.html
 
-    public static <T> Observable<T> toObservable(CompletableFuture<T> future) {
+    public static <T> Observable<T> toObservable(CompletableFuture<? extends T> future) {
         return Observable.create(subscriber ->
                 future.whenComplete((result, error) -> {
                     if (error != null) {
@@ -25,6 +28,22 @@ public class AsyncUtils {
                     }
                 }));
     }
+
+    public static <T> Observable<T> toObservable(Collection<CompletableFuture<? extends T>> futures) {
+        if(futures == null || futures.size() < 1 ){
+            throw  new IllegalArgumentException("Please just transform a non empty Collection of futures");
+        }
+
+        List<Observable<T>>  observables = new ArrayList<>();
+        for (CompletableFuture<? extends T> aFuture : futures) {
+            observables.add(toObservable(aFuture));
+        }
+
+        return Observable.from(observables)
+                //execute in parallel
+                .flatMap(task -> task.observeOn(Schedulers.computation()));
+    }
+
 
     public static <T> CompletableFuture<List<T>> fromObservable(Observable<T> observable) {
         final CompletableFuture<List<T>> future = new CompletableFuture<>();

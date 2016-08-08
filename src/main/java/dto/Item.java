@@ -2,11 +2,13 @@ package dto;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 
 @Data
 @Builder
+@EqualsAndHashCode(of = {"id"})
 public class Item {
     String id;
     String title;
@@ -15,7 +17,7 @@ public class Item {
     String thumbnail;
     Long sellerId;
 
-    public ItemBuilder asBuilder(){
+    public ItemBuilder asBuilder() {
         return Item.builder()
                 .id(id)
                 .title(title)
