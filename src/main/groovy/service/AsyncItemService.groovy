@@ -15,8 +15,8 @@ class AsyncItemService {
      * if available or  uses a thread to fetch the value and
      * caches value onNext to
      */
-    Observable<Item> getById(String id) {
-        String key = '/items/' + id
+    public Observable<Item> getById(String id) {
+        final String key = '/items/' + id
         Item cachedItem = Application.INSTANCE.cache.getIfPresent(key) as Item
 
         if (cachedItem) {
@@ -39,20 +39,22 @@ class AsyncItemService {
         }
     }
 
-    Observable<Item> getByIds(final Collection<String> multipleIds) {
-        Collection<Item> source = multipleIds ?: []
+    public Observable<Item> getByIds(final Collection<String> multipleIds) {
+        log.debug 'AsyncItemService.getByIds'
+
+        Collection<Item> source = new ArrayList<>(multipleIds) ?: []
         if( source.isEmpty() ) return Observable.empty()
 
-        return Observable.from(multipleIds)
+        return Observable.from(source)
                 // It is preferable to run in IO Thread
                 .subscribeOn(Schedulers.io())
-                // flatMap is a nice way to
-                .flatMap({ val -> Observable.just(val) })
+                .flatMap({ val -> Observable.from(ItemService.getFutureItemById(val)) })
+                .doOnNext({ log.debug "WTF is $it on ${Thread.currentThread().name} ::-> ${it.getClass().name}"  })
                 .map({ Map it -> MapperFunctions.mapToItemFunction(it) })
                 .doOnNext({ Item anItem ->
                     // It is better to avoid previous result on its own
                     // on next to avoid side effects
-                    Application.INSTANCE.cache.put(key,anItem)
+                    Application.INSTANCE.cache.put('/items/' + anItem.id ,anItem)
                 }).doOnNext({ Item anItem ->
                     // Debug bussines
                     log.debug "Running on ${Thread.currentThread().name} and returned $anItem"
