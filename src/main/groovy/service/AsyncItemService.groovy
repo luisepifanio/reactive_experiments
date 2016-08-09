@@ -32,10 +32,8 @@ class AsyncItemService {
                         // It is better to avoid previous result on its own
                         // on next to avoid side effects
                         Application.INSTANCE.cache.put(key,anItem)
-                    }).doOnNext({ Item anItem ->
-                        // Debug bussines
-                        log.debug "Running on ${Thread.currentThread().name}"
                     })
+                    .doOnNext({ Item anItem ->  log.debug "Running on ${Thread.currentThread().name}" })
         }
     }
 
@@ -49,16 +47,14 @@ class AsyncItemService {
                 // It is preferable to run in IO Thread
                 .subscribeOn(Schedulers.io())
                 .flatMap({ val -> Observable.from(ItemService.getFutureItemById(val)) })
-                .doOnNext({ log.debug "WTF is $it on ${Thread.currentThread().name} ::-> ${it.getClass().name}"  })
+                // .doOnNext({ log.debug "WTF is $it on ${Thread.currentThread().name} ::-> ${it.getClass().name}"  })
                 .map({ Map it -> MapperFunctions.mapToItemFunction(it) })
                 .doOnNext({ Item anItem ->
                     // It is better to avoid previous result on its own
                     // on next to avoid side effects
                     Application.INSTANCE.cache.put('/items/' + anItem.id ,anItem)
-                }).doOnNext({ Item anItem ->
-                    // Debug bussines
-                    log.debug "Running on ${Thread.currentThread().name} and returned $anItem"
                 })
+                // .doOnNext({ Item anItem ->  log.debug "Running on ${Thread.currentThread().name} and returned $anItem" })
 
 
 

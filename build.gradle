@@ -88,6 +88,8 @@ jacocoTestReport {
     }
 }
 
+check.dependsOn jacocoTestReport
+
 sourceSets {
     main {
         output.resourcesDir = "build/classes/main"

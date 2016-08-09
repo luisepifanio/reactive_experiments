@@ -4,6 +4,7 @@ import app.Application
 import backtolife.AsyncUtils
 import com.google.common.base.Preconditions
 import dto.Item
+import functions.MapperFunctions
 import groovy.time.TimeCategory
 import groovy.time.TimeDuration
 import rx.Observable
@@ -33,14 +34,7 @@ class ItemService {
             // You should avoid this as a plague
             def data = futureResponse.get(id)
 
-            Item item = Item.builder()
-                    .id(data.id)
-                    .title(data.title)
-                    .currencyId(data.currency_id)
-                    .thumbnail(data.thumbnail)
-                    .sellerId(data.seller_id)
-                    .price(data.price as BigDecimal)
-                    .build()
+            Item item = MapperFunctions.mapToItemFunction(data)
 
             long end = System.currentTimeMillis()
             TimeDuration duration = TimeCategory.minus(new Date(end), new Date(start))
