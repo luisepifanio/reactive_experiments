@@ -137,6 +137,10 @@ task runscript(dependsOn: 'classes', type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.14.1'
+}
+
 // Lombok annotation processor
 buildscript {
     repositories {
